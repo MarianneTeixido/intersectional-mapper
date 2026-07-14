@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instrumento Interseccional</title>
+<style>
+  /* ── reset + base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #f5f4f0;
+    --surface:   #ffffff;
+    --border:    #dddbd4;
+    --border-s:  #b8b5ac;
+    --text:      #1a1a18;
+    --muted:     #6b6963;
+    --accent:    #2563eb;
+    --accent-bg: #eff6ff;
+    --accent-bd: #93c5fd;
+    --pro:       #7c3aed;
+    --pro-bg:    #f5f3ff;
+    --pro-bd:    #c4b5fd;
+    --ok:        #16a34a;
+    --ok-bg:     #f0fdf4;
+    --warn:      #d97706;
+    --warn-bg:   #fffbeb;
+    --danger:    #dc2626;
+    --radius:    8px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181a; --surface: #232325; --border: #3a3a3c; --border-s: #5a5a5e;
+      --text: #e8e6df; --muted: #9a9893; --accent: #60a5fa; --accent-bg: #1e3a5f;
+      --accent-bd: #2563eb; --pro: #a78bfa; --pro-bg: #2d1f5e; --pro-bd: #7c3aed;
+      --ok: #4ade80; --ok-bg: #14251b; --warn: #fbbf24; --warn-bg: #2a1f0a;
+    }
+  }
+
+  body { min-height: 100vh; padding: 2rem 1rem 4rem; }
+
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  /* ── header ── */
+  .app-header { margin-bottom: 2rem; }
+  .app-header h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: .25rem; }
+  .app-header p  { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── api status ── */
+  .api-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: var(--radius);
+    border: 0.5px solid var(--border); background: var(--surface);
+    font-size: .8rem; margin-bottom: 1.5rem;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-s); }
+  .dot.ok   { background: var(--ok); }
+  .dot.err  { background: var(--danger); }
+  .dot.wait { background: var(--warn); }
+  .api-url-input {
+    flex: 1; border: none; background: transparent; font-size: .8rem;
+    color: var(--muted); font-family: monospace; outline: none;
+  }
+  .btn-sm {
+    padding: 4px 10px; font-size: .75rem; border-radius: 20px;
+    border: 0.5px solid var(--border-s); background: transparent;
+    color: var(--muted); cursor: pointer;
+  }
+  .btn-sm:hover { background: var(--bg); }
+
+  /* ── persona nav ── */
+  .persona-nav {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 6px; margin-bottom: 1.5rem;
+  }
+  .pnav-label { font-size: .75rem; color: var(--muted); margin-right: 2px; }
+  .p-btn {
+    padding: 4px 12px; font-size: .8rem; border-radius: 20px;
+    border: 0.5px solid var(--border); background: var(--surface);
+    color: var(--muted); cursor: pointer; transition: all .12s;
+  }
+  .p-btn:hover { border-color: var(--border-s); }
+  .p-btn.active {
+    background: var(--accent-bg); border-color: var(--accent-bd);
+    color: var(--accent); font-weight: 500;
+  }
+  .p-btn.saved { border-style: solid; }
+  .p-add {
+    padding: 4px 12px; font-size: .8rem; border-radius: 20px;
+    border: 0.5px dashed var(--border-s); background: transparent;
+    color: var(--muted); cursor: pointer;
+  }
+  .p-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── sections ── */
+  .section { margin-bottom: 2rem; }
+  .sec-head {
+    display: flex; align-items: center; gap: 8px;
+    padding-bottom: 8px; border-bottom: 0.5px solid var(--border);
+    margin-bottom: 1rem;
+  }
+  .sec-name { font-size: .7rem; font-weight: 600; text-transform: uppercase;
+              letter-spacing: .06em; color: var(--muted); }
+  .badge {
+    font-size: .65rem; padding: 2px 8px; border-radius: 20px; font-weight: 500;
+  }
+  .b-req   { background: #fee2e2; color: #991b1b; }
+  .b-str   { background: var(--accent-bg); color: var(--accent); }
+  .b-ep    { background: var(--pro-bg); color: var(--pro); }
+
+  /* ── fields ── */
+  .field { margin-bottom: 1.1rem; }
+  .field-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .85rem; font-weight: 500; margin-bottom: 3px;
+  }
+  .field-hint { font-size: .72rem; color: var(--muted); margin-bottom: 5px; line-height: 1.5; }
+  .ftype {
+    font-size: .65rem; padding: 1px 7px; border-radius: 10px;
+    border: 0.5px solid var(--border); color: var(--muted); font-weight: 400;
+  }
+  .ftype.multi { border-color: var(--accent-bd); color: var(--accent); background: var(--accent-bg); }
+  .ftype.open  { border-color: #fcd34d; color: var(--warn); background: var(--warn-bg); }
+
+  /* ── tags ── */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 11px; border-radius: 20px;
+    border: 0.5px solid var(--border); font-size: .8rem;
+    color: var(--muted); cursor: pointer; user-select: none;
+    background: var(--surface); transition: all .1s;
+  }
+  .tag:hover { border-color: var(--border-s); }
+  .tag.on { background: var(--accent-bg); border-color: var(--accent-bd); color: var(--accent); }
+
+  /* ── inputs / textarea ── */
+  input[type=text], textarea {
+    width: 100%; padding: 7px 10px; font-size: .85rem;
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text);
+    font-family: inherit; line-height: 1.5;
+  }
+  input[type=text]:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-bg);
+  }
+  textarea { resize: vertical; min-height: 72px; }
+  .other { margin-top: 6px; display: none; }
+  .other.show { display: block; }
+
+  /* ── epistemic blocks ── */
+  .ep-block {
+    background: var(--pro-bg); border: 0.5px solid var(--pro-bd);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
+  }
+  .ep-block strong { display: block; font-size: .85rem; margin-bottom: 2px; }
+  .ep-block span   { display: block; font-size: .72rem; color: var(--muted); margin-bottom: 7px; line-height: 1.5; }
+
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.5rem 0; }
+
+  /* ── coverage ── */
+  .coverage {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin-top: 1.5rem;
+  }
+  .cov-title { font-size: .8rem; font-weight: 500; margin-bottom: 10px; }
+  .cov-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .cov-item  { display: flex; align-items: center; gap: 7px; font-size: .78rem; color: var(--muted); }
+  .cov-dot   { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+               border: 0.5px solid var(--border-s); transition: background .2s; }
+  .cov-dot.ok   { background: var(--ok); border-color: var(--ok); }
+  .cov-dot.miss { background: transparent; }
+
+  /* ── action bar ── */
+  .actions {
+    margin-top: 1.5rem; display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 14px 0; border-top: 0.5px solid var(--border);
+  }
+  .btn {
+    padding: 8px 16px; font-size: .85rem; border-radius: var(--radius);
+    border: 0.5px solid var(--border-s); background: var(--surface);
+    color: var(--text); cursor: pointer; font-family: inherit;
+    transition: all .12s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn.primary {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .btn.primary:hover { opacity: .9; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── toast ── */
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    padding: 10px 16px; border-radius: var(--radius);
+    font-size: .8rem; font-weight: 500; color: #fff;
+    background: var(--text); opacity: 0;
+    transition: opacity .2s; pointer-events: none; z-index: 99;
+  }
+  .toast.show { opacity: 1; }
+  .toast.err  { background: var(--danger); }
+
+  /* ── personas list ── */
+  .list-section { margin-top: 2rem; }
+  .list-title   { font-size: .8rem; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+  .p-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--surface);
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 6px; font-size: .82rem;
+  }
+  .p-row-name  { font-weight: 500; flex: 1; }
+  .p-row-meta  { color: var(--muted); font-size: .75rem; }
+  .btn-xs {
+    padding: 3px 9px; font-size: .72rem; border-radius: 20px;
+    border: 0.5px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer;
+  }
+  .btn-xs:hover { border-color: var(--border-s); }
+  .btn-xs.del:hover { border-color: var(--danger); color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-header">
+    <h1>Instrumento de evaluación interseccional</h1>
+    <p>Basado en Crenshaw, Hill Collins, Lugones y Puar. Los datos se guardan en tu propio backend.</p>
+  </header>
+
+  <!-- API config -->
+  <div class="api-bar">
+    <span class="dot wait" id="apiDot"></span>
+    <input class="api-url-input" id="apiUrl"
+      value="https://intersectional-mapper.onrender.com"
+      placeholder="https://intersectional-mapper.onrender.com"
+      onchange="checkApi()">
+    <button class="btn-sm" onclick="checkApi()">conectar</button>
+    <button class="btn-sm" onclick="exportarCSV()">exportar CSV</button>
+  </div>
+
+  <!-- Persona nav -->
+  <div class="persona-nav" id="pnav">
+    <span class="pnav-label">Persona</span>
+  </div>
+
+  <!-- FORM -->
+  <form id="mainForm" onsubmit="return false">
+
+    <!-- Identificación -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-name">Identificación</span>
+      </div>
+      <div class="field">
+        <div class="field-label">Nombre o pseudónimo <span class="ftype">texto libre</span></div>
+        <input type="text" id="f-nombre" placeholder="P-01 / anónima / Marta">
+      </div>
+      <div class="field">
+        <div class="field-label">Contacto <span class="ftype">texto libre</span></div>
+        <input type="text" id="f-contacto" placeholder="correo, red social, etc.">
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Ejes primer orden -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-name">Ejes de primer orden</span>
+        <span class="badge b-req">obligatorio</span>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Origen étnico-racial <span class="ftype multi">múltiple</span></div>
+        <div class="field-hint">Autoidentificación — puede seleccionar más de uno.</div>
+        <div class="tags" id="raza">
+          <span class="tag" data-v="Indígena / originaria">Indígena / originaria</span>
+          <span class="tag" data-v="Afrodescendiente / negra">Afrodescendiente / negra</span>
+          <span class="tag" data-v="Mestiza">Mestiza</span>
+          <span class="tag" data-v="Blanca / europea">Blanca / europea</span>
+          <span class="tag" data-v="Asiática / asiático-descendiente">Asiática / asiático-descendiente</span>
+          <span class="tag" data-v="Roma / gitana">Roma / gitana</span>
+          <span class="tag" data-v="Árabe / magrebí">Árabe / magrebí</span>
+          <span class="tag" data-v="__otro__">Otra</span>
+        </div>
+        <div class="other" id="raza-otro"><input type="text" placeholder="Especificar..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Género autopercibido <span class="ftype multi">múltiple / abierto</span></div>
+        <div class="field-hint">Lugones: el binario de género es imposición colonial — términos propios son válidos.</div>
+        <div class="tags" id="genero">
+          <span class="tag" data-v="Mujer">Mujer</span>
+          <span class="tag" data-v="Hombre">Hombre</span>
+          <span class="tag" data-v="No-binarie">No-binarie</span>
+          <span class="tag" data-v="Trans femenina">Trans femenina</span>
+          <span class="tag" data-v="Trans masculino">Trans masculino</span>
+          <span class="tag" data-v="Género fluido">Género fluido</span>
+          <span class="tag" data-v="Agénero">Agénero</span>
+          <span class="tag" data-v="__otro__">Otro / propio</span>
+        </div>
+        <div class="other" id="genero-otro"><input type="text" id="f-genero-otro" placeholder="Término propio..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Expresión de género <span class="ftype multi">múltiple</span></div>
+        <div class="tags" id="expresion">
+          <span class="tag" data-v="Femenina">Femenina</span>
+          <span class="tag" data-v="Masculina">Masculina</span>
+          <span class="tag" data-v="Andrógina">Andrógina</span>
+          <span class="tag" data-v="Variable / no fija">Variable / no fija</span>
+          <span class="tag" data-v="No normativa">No normativa</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Lugar de origen <span class="ftype open">texto libre</span></div>
+        <div class="field-hint">Ciudad, región o comunidad — no solo país.</div>
+        <input type="text" id="f-origen" placeholder="ej. Oaxaca, MX / La Habana / zona rural Boyacá">
+      </div>
+
+      <div class="field">
+        <div class="field-label">Lugar de residencia actual <span class="ftype open">texto libre</span></div>
+        <input type="text" id="f-residencia" placeholder="ej. CDMX / Berlín / ciudad fronteriza">
+      </div>
+
+      <div class="field">
+        <div class="field-label">Clase social (autoidentificada) <span class="ftype">único</span></div>
+        <div class="tags" id="clase" data-single>
+          <span class="tag" data-v="Popular / trabajadora">Popular / trabajadora</span>
+          <span class="tag" data-v="Media-baja">Media-baja</span>
+          <span class="tag" data-v="Media">Media</span>
+          <span class="tag" data-v="Media-alta">Media-alta</span>
+          <span class="tag" data-v="Alta">Alta</span>
+          <span class="tag" data-v="Prefiero no decir">Prefiero no decir</span>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Ejes segundo orden -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-name">Ejes estructurales de segundo orden</span>
+        <span class="badge b-str">apuntalar la diversidad</span>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Orientación sexual <span class="ftype multi">múltiple / abierto</span></div>
+        <div class="field-hint">Puar y Lugones: la heteronorma es colonial. Incluir términos propios del sur global.</div>
+        <div class="tags" id="sexualidad">
+          <span class="tag" data-v="Heterosexual">Heterosexual</span>
+          <span class="tag" data-v="Lesbiana">Lesbiana</span>
+          <span class="tag" data-v="Gay / homosexual">Gay / homosexual</span>
+          <span class="tag" data-v="Bisexual">Bisexual</span>
+          <span class="tag" data-v="Pansexual">Pansexual</span>
+          <span class="tag" data-v="Asexual / demisexual">Asexual / demisexual</span>
+          <span class="tag" data-v="Queer">Queer</span>
+          <span class="tag" data-v="__otro__">Término propio</span>
+        </div>
+        <div class="other" id="sexualidad-otro"><input type="text" id="f-sexualidad-otro" placeholder="Término propio..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Sexo asignado al nacer <span class="ftype">único</span></div>
+        <div class="field-hint">Registrar disociado del género autopercibido.</div>
+        <div class="tags" id="sexo" data-single>
+          <span class="tag" data-v="Femenino">Femenino</span>
+          <span class="tag" data-v="Masculino">Masculino</span>
+          <span class="tag" data-v="Intersex">Intersex</span>
+          <span class="tag" data-v="No especificado">No especificado</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Estatus migratorio <span class="ftype">único</span></div>
+        <div class="tags" id="estatus_migratorio" data-single>
+          <span class="tag" data-v="Ciudadana/o del país">Ciudadana/o del país</span>
+          <span class="tag" data-v="Residente legal">Residente legal</span>
+          <span class="tag" data-v="Visa / permiso temporal">Visa / permiso temporal</span>
+          <span class="tag" data-v="En proceso de regularización">En proceso de regularización</span>
+          <span class="tag" data-v="Sin documentos">Sin documentos</span>
+          <span class="tag" data-v="Desplazada/o">Desplazada/o</span>
+          <span class="tag" data-v="Refugiada/o">Refugiada/o</span>
+          <span class="tag" data-v="Prefiero no decir">Prefiero no decir</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">(Des)capacidad / neurodivergencia <span class="ftype multi">múltiple / abierto</span></div>
+        <div class="field-hint">Puar: el cuerpo fuera de la norma productiva es producido por sistemas de opresión.</div>
+        <div class="tags" id="discapacidad">
+          <span class="tag" data-v="Sin discapacidad identificada">Sin discapacidad identificada</span>
+          <span class="tag" data-v="Discapacidad física / motriz">Discapacidad física / motriz</span>
+          <span class="tag" data-v="Discapacidad visual">Discapacidad visual</span>
+          <span class="tag" data-v="Discapacidad auditiva">Discapacidad auditiva</span>
+          <span class="tag" data-v="Neurodivergente (TDAH, autismo...)">Neurodivergente (TDAH, autismo...)</span>
+          <span class="tag" data-v="Discapacidad psicosocial">Discapacidad psicosocial</span>
+          <span class="tag" data-v="Condición crónica / dolor crónico">Condición crónica / dolor crónico</span>
+          <span class="tag" data-v="__otro__">Otra / no categorizada</span>
+        </div>
+        <div class="other" id="discapacidad-otro"><input type="text" id="f-discap-otro" placeholder="Especificar..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Edad / generación <span class="ftype">único</span></div>
+        <div class="tags" id="edad" data-single>
+          <span class="tag" data-v="Menor de 25">Menor de 25</span>
+          <span class="tag" data-v="25–35">25–35</span>
+          <span class="tag" data-v="36–45">36–45</span>
+          <span class="tag" data-v="46–60">46–60</span>
+          <span class="tag" data-v="Más de 60">Más de 60</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Religión / espiritualidad <span class="ftype multi">múltiple / abierto</span></div>
+        <div class="field-hint">Lugones: cosmologías no-occidentales son saberes destruidos por la colonialidad.</div>
+        <div class="tags" id="espiritualidad">
+          <span class="tag" data-v="Atea / agnóstica / laica">Atea / agnóstica / laica</span>
+          <span class="tag" data-v="Cristiana">Cristiana (catól. / evang. / ortod.)</span>
+          <span class="tag" data-v="Práctica indígena / originaria">Práctica indígena / originaria</span>
+          <span class="tag" data-v="Afro (candomblé, santería, vodou...)">Afro (candomblé, santería, vodou...)</span>
+          <span class="tag" data-v="Islam">Islam</span>
+          <span class="tag" data-v="Judaísmo">Judaísmo</span>
+          <span class="tag" data-v="Budismo / hinduismo">Budismo / hinduismo</span>
+          <span class="tag" data-v="__otro__">Espiritualidad propia / sincrética</span>
+        </div>
+        <div class="other" id="espiritualidad-otro"><input type="text" id="f-espirit-otro" placeholder="Especificar..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Situación carceral <span class="ftype">único</span></div>
+        <div class="field-hint">Campo sensible — incluir solo con consentimiento informado explícito.</div>
+        <div class="tags" id="situacion_carceral" data-single>
+          <span class="tag" data-v="Sin experiencia carceral">Sin experiencia carceral</span>
+          <span class="tag" data-v="Privada/o de libertad actualmente">Privada/o de libertad actualmente</span>
+          <span class="tag" data-v="Excarcelada/o">Excarcelada/o</span>
+          <span class="tag" data-v="Familiar encarcelada/o">Familiar encarcelada/o</span>
+          <span class="tag" data-v="Prefiero no decir">Prefiero no decir</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Tamaño corporal (autoidentificado) <span class="ftype">único</span></div>
+        <div class="tags" id="tamanio_corporal" data-single>
+          <span class="tag" data-v="Normativo / no significativo">Normativo / no significativo</span>
+          <span class="tag" data-v="Gordo / fat (autoidentificado)">Gordo / fat (autoidentificado)</span>
+          <span class="tag" data-v="Muy delgada/o">Muy delgada/o</span>
+          <span class="tag" data-v="Prefiero no decir">Prefiero no decir</span>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Formación -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-name">Formación y ocupación</span>
+        <span class="badge b-str">standpoint del conocimiento</span>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Nivel educativo formal <span class="ftype">único</span></div>
+        <div class="tags" id="nivel_educativo" data-single>
+          <span class="tag" data-v="Sin escolarización formal">Sin escolarización formal</span>
+          <span class="tag" data-v="Primaria / secundaria">Primaria / secundaria</span>
+          <span class="tag" data-v="Preparatoria / bachillerato">Preparatoria / bachillerato</span>
+          <span class="tag" data-v="Técnico / vocacional">Técnico / vocacional</span>
+          <span class="tag" data-v="Licenciatura">Licenciatura</span>
+          <span class="tag" data-v="Posgrado">Posgrado</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Formación no académica relevante <span class="ftype multi">múltiple / abierto</span></div>
+        <div class="field-hint">Collins: conocimiento situado fuera de la academia es epistémicamente válido.</div>
+        <div class="tags" id="formacion_no_academica">
+          <span class="tag" data-v="Organización comunitaria">Organización comunitaria</span>
+          <span class="tag" data-v="Activismo / militancia">Activismo / militancia</span>
+          <span class="tag" data-v="Saberes artesanales / técnicos">Saberes artesanales / técnicos</span>
+          <span class="tag" data-v="Práctica artística">Práctica artística</span>
+          <span class="tag" data-v="Cuidado / trabajo reproductivo">Cuidado / trabajo reproductivo</span>
+          <span class="tag" data-v="Saber indígena / comunitario">Saber indígena / comunitario</span>
+          <span class="tag" data-v="Práctica espiritual o ritual">Práctica espiritual o ritual</span>
+          <span class="tag" data-v="Autoformación / autodidacta">Autoformación / autodidacta</span>
+          <span class="tag" data-v="__otro__">Otro</span>
+        </div>
+        <div class="other" id="formacion_no_academica-otro"><input type="text" id="f-noacad-otro" placeholder="Especificar..."></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Ocupación actual <span class="ftype open">texto libre</span></div>
+        <input type="text" id="f-ocupacion" placeholder="ej. trabajadora doméstica, artista, activista sin paga, estudiante">
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Posición epistémica -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-name">Posición epistémica</span>
+        <span class="badge b-ep">Collins / Lugones — lo que los campos cerrados no capturan</span>
+      </div>
+
+      <div class="ep-block">
+        <strong>¿Desde qué lugar te acercás a este tema?</strong>
+        <span>No hay respuesta correcta. Interesa el vínculo entre tu experiencia vivida y el tema de la investigación.</span>
+        <textarea id="ep-lugar" placeholder='ej. "Soy migrante sin papeles y el tema de IA me interesa porque quiero saber cómo los sistemas me clasifican sin que yo lo decida"'></textarea>
+      </div>
+
+      <div class="ep-block">
+        <strong>¿Qué sabés sobre este tema que no viene de libros o de la escuela?</strong>
+        <span>Saberes del cuerpo, de la comunidad, de la calle, de la práctica. Collins: conocimiento de las oprimidas.</span>
+        <textarea id="ep-saber" placeholder='ej. "Sé cómo funciona la vigilancia policial desde adentro" / "Conozco prácticas curativas que la medicina no reconoce"'></textarea>
+      </div>
+
+      <div class="ep-block">
+        <strong>¿Qué perspectivas o voces faltan normalmente en estas conversaciones?</strong>
+        <span>Crenshaw: los marcos incompletos excluyen posiciones marginalizadas. Esta pregunta mapea los puntos ciegos del grupo.</span>
+        <textarea id="ep-falta" placeholder='ej. "Las personas que usan tecnología pero no la crean" / "Comunidades rurales sin acceso"'></textarea>
+      </div>
+
+      <div class="ep-block">
+        <strong>¿Hay algo en tu trayectoria o identidad que te genera tensión dentro de este espacio?</strong>
+        <span>Puar: los cuerpos-assemblage contienen contradicciones. Nombrar las tensiones es parte del análisis.</span>
+        <textarea id="ep-tension" placeholder='ej. "Soy universitaria pero vengo de comunidad muy pobre" / "Soy migrante pero con pasaporte europeo"'></textarea>
+      </div>
+    </div>
+
+    <!-- Coverage -->
+    <div class="coverage">
+      <div class="cov-title">Cobertura de ejes obligatorios</div>
+      <div class="cov-grid" id="covGrid"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button type="button" class="btn primary" onclick="guardar()">Guardar perfil</button>
+      <button type="button" class="btn" onclick="nuevoFormulario()">Nueva persona</button>
+      <button type="button" class="btn" onclick="verLista()">Ver todas</button>
+    </div>
+  </form>
+
+  <!-- Lista de personas cargadas -->
+  <div class="list-section" id="listaSection" style="display:none">
+    <div class="list-title">Personas registradas</div>
+    <div id="listaPersonas"></div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── config ──
+const API_URL_KEY = 'intersectional_mapper_api_url';
+let apiUrl = localStorage.getItem(API_URL_KEY) || 'https://intersectional-mapper.onrender.com';
+document.getElementById('apiUrl').value = apiUrl;
+
+// ── multi-select tags ──
+const multiGroups  = ['raza','genero','expresion','sexualidad','discapacidad','espiritualidad','formacion_no_academica'];
+const singleGroups = ['clase','sexo','estatus_migratorio','edad','situacion_carceral','tamanio_corporal','nivel_educativo'];
+const otroTriggers = {
+  'raza': 'raza-otro', 'genero': 'genero-otro',
+  'sexualidad': 'sexualidad-otro', 'discapacidad': 'discapacidad-otro',
+  'espiritualidad': 'espiritualidad-otro', 'formacion_no_academica': 'formacion_no_academica-otro'
+};
+
+function initTags() {
+  document.querySelectorAll('.tags .tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      const group = tag.parentElement.id;
+      const isSingle = singleGroups.includes(group);
+      if (isSingle) {
+        tag.parentElement.querySelectorAll('.tag').forEach(t => t.classList.remove('on'));
+        tag.classList.add('on');
+      } else {
+        tag.classList.toggle('on');
+      }
+      const otroDiv = otroTriggers[group];
+      if (otroDiv) {
+        const hasOtro = [...tag.parentElement.querySelectorAll('.tag.on')]
+          .some(t => t.dataset.v === '__otro__');
+        document.getElementById(otroDiv).classList.toggle('show', hasOtro);
+      }
+      updateCoverage();
+    });
+  });
+}
+
+// ── coverage ──
+const COV_EJES = [
+  { id: 'raza',            label: 'Origen étnico-racial', tipo: 'tags' },
+  { id: 'genero',          label: 'Género autopercibido',  tipo: 'tags' },
+  { id: 'clase',           label: 'Clase social',          tipo: 'tags' },
+  { id: 'f-origen',        label: 'Lugar de origen',       tipo: 'input' },
+  { id: 'sexualidad',      label: 'Orientación sexual',    tipo: 'tags' },
+  { id: 'nivel_educativo', label: 'Nivel educativo',       tipo: 'tags' },
+  { id: 'ep-lugar',        label: 'Posición epistémica',   tipo: 'textarea' },
+];
+
+function updateCoverage() {
+  const grid = document.getElementById('covGrid');
+  grid.innerHTML = '';
+  COV_EJES.forEach(e => {
+    let filled = false;
+    if (e.tipo === 'tags') {
+      filled = document.querySelectorAll(`#${e.id} .tag.on`).length > 0;
+    } else {
+      const el = document.getElementById(e.id);
+      filled = el && el.value.trim().length > 0;
+    }
+    grid.innerHTML += `<div class="cov-item">
+      <span class="cov-dot ${filled ? 'ok' : 'miss'}"></span>
+      <span>${e.label}</span>
+    </div>`;
+  });
+}
+
+// ── get / set form values ──
+function getTagsVal(id) {
+  return [...document.querySelectorAll(`#${id} .tag.on`)]
+    .map(t => t.dataset.v === '__otro__'
+      ? (document.querySelector(`#${id}-otro input`)?.value || 'otra')
+      : t.dataset.v)
+    .filter(Boolean);
+}
+function getSingleVal(id) {
+  const el = document.querySelector(`#${id} .tag.on`);
+  return el ? el.dataset.v : null;
+}
+
+function collectForm() {
+  return {
+    nombre:      document.getElementById('f-nombre').value,
+    contacto:    document.getElementById('f-contacto').value,
+    raza:        getTagsVal('raza'),
+    genero:      getTagsVal('genero'),
+    genero_otro: document.getElementById('f-genero-otro')?.value || null,
+    expresion:   getTagsVal('expresion'),
+    lugar_origen: document.getElementById('f-origen').value,
+    residencia:  document.getElementById('f-residencia').value,
+    clase:       getSingleVal('clase'),
+    sexualidad:  getTagsVal('sexualidad'),
+    sexualidad_otro: document.getElementById('f-sexualidad-otro')?.value || null,
+    sexo:        getSingleVal('sexo'),
+    estatus_migratorio: getSingleVal('estatus_migratorio'),
+    discapacidad: getTagsVal('discapacidad'),
+    discap_otro: document.getElementById('f-discap-otro')?.value || null,
+    edad:        getSingleVal('edad'),
+    espiritualidad: getTagsVal('espiritualidad'),
+    espirit_otro: document.getElementById('f-espirit-otro')?.value || null,
+    situacion_carceral: getSingleVal('situacion_carceral'),
+    tamanio_corporal: getSingleVal('tamanio_corporal'),
+    nivel_educativo: getSingleVal('nivel_educativo'),
+    formacion_no_academica: getTagsVal('formacion_no_academica'),
+    noacad_otro: document.getElementById('f-noacad-otro')?.value || null,
+    ocupacion:   document.getElementById('f-ocupacion').value,
+    ep_lugar:    document.getElementById('ep-lugar').value,
+    ep_saber:    document.getElementById('ep-saber').value,
+    ep_falta:    document.getElementById('ep-falta').value,
+    ep_tension:  document.getElementById('ep-tension').value,
+  };
+}
+
+function setForm(d) {
+  document.getElementById('f-nombre').value   = d.nombre || '';
+  document.getElementById('f-contacto').value = d.contacto || '';
+  document.getElementById('f-origen').value   = d.lugar_origen || '';
+  document.getElementById('f-residencia').value = d.residencia || '';
+  document.getElementById('f-ocupacion').value  = d.ocupacion || '';
+  document.getElementById('ep-lugar').value   = d.ep_lugar || '';
+  document.getElementById('ep-saber').value   = d.ep_saber || '';
+  document.getElementById('ep-falta').value   = d.ep_falta || '';
+  document.getElementById('ep-tension').value = d.ep_tension || '';
+  [...multiGroups, ...singleGroups].forEach(gid => {
+    document.querySelectorAll(`#${gid} .tag`).forEach(t => t.classList.remove('on'));
+  });
+  const setTags = (gid, vals) => {
+    if (!vals || !vals.length) return;
+    document.querySelectorAll(`#${gid} .tag`).forEach(t => {
+      if (vals.includes(t.dataset.v)) t.classList.add('on');
+    });
+    const otroDiv = otroTriggers[gid];
+    if (otroDiv) {
+      const hasOtro = document.querySelectorAll(`#${gid} .tag[data-v="__otro__"].on`).length > 0;
+      document.getElementById(otroDiv).classList.toggle('show', hasOtro);
+    }
+  };
+  setTags('raza', d.raza);
+  setTags('genero', d.genero);
+  setTags('expresion', d.expresion);
+  setTags('sexualidad', d.sexualidad);
+  setTags('discapacidad', d.discapacidad);
+  setTags('espiritualidad', d.espiritualidad);
+  setTags('formacion_no_academica', d.formacion_no_academica);
+  const setS = (gid, val) => {
+    if (!val) return;
+    document.querySelectorAll(`#${gid} .tag`).forEach(t => {
+      if (t.dataset.v === val) t.classList.add('on');
+    });
+  };
+  setS('clase', d.clase); setS('sexo', d.sexo);
+  setS('estatus_migratorio', d.estatus_migratorio);
+  setS('edad', d.edad); setS('situacion_carceral', d.situacion_carceral);
+  setS('tamanio_corporal', d.tamanio_corporal);
+  setS('nivel_educativo', d.nivel_educativo);
+  updateCoverage();
+}
+
+function clearForm() {
+  document.querySelectorAll('input[type=text]').forEach(i => i.value = '');
+  document.querySelectorAll('textarea').forEach(t => t.value = '');
+  document.querySelectorAll('.tag.on').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.other').forEach(d => d.classList.remove('show'));
+  updateCoverage();
+}
+
+// ── current editing state ──
+let currentId = null;
+
+// ── API calls ──
+async function checkApi() {
+  apiUrl = document.getElementById('apiUrl').value.trim().replace(/\/$/, '');
+  localStorage.setItem(API_URL_KEY, apiUrl);
+  const dot = document.getElementById('apiDot');
+  dot.className = 'dot wait';
+  try {
+    const r = await fetch(apiUrl + '/');
+    dot.className = r.ok ? 'dot ok' : 'dot err';
+    if (r.ok) toast('API conectada');
+    else toast('API respondió con error', true);
+  } catch {
+    dot.className = 'dot err';
+    toast('No se pudo conectar a la API', true);
+  }
+}
+
+async function guardar() {
+  const data = collectForm();
+  try {
+    let r, msg;
+    if (currentId) {
+      r = await fetch(`${apiUrl}/personas/${currentId}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      msg = 'Perfil actualizado';
+    } else {
+      r = await fetch(`${apiUrl}/personas`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const j = await r.json();
+      currentId = j.id;
+      msg = `Perfil guardado (id: ${j.id})`;
+    }
+    if (!r.ok) throw new Error(r.status);
+    toast(msg);
+    if (document.getElementById('listaSection').style.display !== 'none') verLista();
+  } catch (e) {
+    toast('Error al guardar: ' + e.message, true);
+  }
+}
+
+async function nuevoFormulario() {
+  currentId = null;
+  clearForm();
+  document.getElementById('listaSection').style.display = 'none';
+}
+
+async function verLista() {
+  try {
+    const r = await fetch(`${apiUrl}/personas`);
+    const personas = await r.json();
+    const sec = document.getElementById('listaSection');
+    const lista = document.getElementById('listaPersonas');
+    sec.style.display = 'block';
+    lista.innerHTML = '';
+    if (!personas.length) {
+      lista.innerHTML = '<p style="color:var(--muted);font-size:.82rem">No hay personas registradas aún.</p>';
+      return;
+    }
+    personas.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'p-row';
+      div.innerHTML = `
+        <span class="p-row-name">${p.nombre || 'Sin nombre'}</span>
+        <span class="p-row-meta">${(p.raza||[]).join(', ') || '—'}</span>
+        <button class="btn-xs" onclick="editarPersona(${p.id})">editar</button>
+        <button class="btn-xs del" onclick="eliminarPersona(${p.id})">eliminar</button>`;
+      lista.appendChild(div);
+    });
+  } catch (e) {
+    toast('Error al cargar lista: ' + e.message, true);
+  }
+}
+
+async function editarPersona(id) {
+  try {
+    const r = await fetch(`${apiUrl}/personas/${id}`);
+    const p = await r.json();
+    currentId = id;
+    setForm(p);
+    window.scrollTo(0, 0);
+    toast(`Editando: ${p.nombre || 'id ' + id}`);
+  } catch (e) {
+    toast('Error al cargar perfil', true);
+  }
+}
+
+async function eliminarPersona(id) {
+  if (!confirm('¿Eliminar este perfil? Esta acción no se puede deshacer.')) return;
+  try {
+    await fetch(`${apiUrl}/personas/${id}`, { method: 'DELETE' });
+    toast('Perfil eliminado');
+    verLista();
+  } catch (e) {
+    toast('Error al eliminar', true);
+  }
+}
+
+async function exportarCSV() {
+  window.open(`${apiUrl}/exportar/csv`, '_blank');
+}
+
+// ── toast ──
+function toast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (err ? ' err' : '');
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+// ── init ──
+initTags();
+updateCoverage();
+checkApi();
+</script>
+</body>
+</html>

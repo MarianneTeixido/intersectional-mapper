@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Base de datos SQLite (datos sensibles — nunca subir)
+*.db
+*.sqlite
+*.sqlite3
+
+# Exportaciones
+*.csv
+
+# Notas internas de deploy/uso (no versionar)
+NOTES.md
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
